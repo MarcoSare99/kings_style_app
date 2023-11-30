@@ -1,28 +1,32 @@
 import 'package:flexi_image_slider/flexi_image_slider.dart';
 
 import 'package:flutter/material.dart';
+import 'package:kings_style_app/models/product_model.dart';
 
 class DetailsProductoScreen extends StatefulWidget {
-  //ProductosModel productosModel;
-  const DetailsProductoScreen({super.key});
+  ProductModel productModel;
+  DetailsProductoScreen({super.key, required this.productModel});
 
   @override
   State<DetailsProductoScreen> createState() => _ProductDetailsState();
 }
 
 class _ProductDetailsState extends State<DetailsProductoScreen> {
+  late ProductModel productModel;
   TextEditingController controller = TextEditingController();
-  List<String> arrayImages = [
-    "https://www.mensfashion.com.mx/on/demandware.static/-/Sites-storefront-catalog-m-en/default/dw1f9f96cd/images/FA00326677_1.jpg",
-    "https://www.mensfashion.com.mx/on/demandware.static/-/Sites-storefront-catalog-m-en/default/dw1f9f96cd/images/FA00326677_1.jpg",
-    "https://www.mensfashion.com.mx/on/demandware.static/-/Sites-storefront-catalog-m-en/default/dw1f9f96cd/images/FA00326677_1.jpg",
-  ];
-  List<String> list = <String>['CH', 'M', 'G', 'EG'];
+  List<String> arrayImages = [];
+  List<String> list = [];
   late String dropdownValue;
   int quantity = 0;
+  int talla = 0;
 
   @override
   void initState() {
+    productModel = widget.productModel;
+    arrayImages = productModel.images!;
+    list = productModel.sizes!.map((item) {
+      return item['size'].toString();
+    }).toList();
     dropdownValue = list.first;
     controller.text = quantity.toString();
     super.initState();
@@ -61,24 +65,27 @@ class _ProductDetailsState extends State<DetailsProductoScreen> {
                     //handle your click events
                   },
                 ),
-                const Text(
-                  "Suéter contemporary fit sonneti",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                Text(
+                  productModel.name!,
+                  style: const TextStyle(
+                      fontSize: 24, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
                   child: Text(
-                    "Modelo: SUCCSUNFTN0003",
-                    style: TextStyle(fontSize: 12),
+                    productModel.model!,
+                    style: const TextStyle(fontSize: 12),
                     textAlign: TextAlign.start,
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
                   child: Text(
-                    "200.00 MXN",
-                    style: TextStyle(fontSize: 22),
+                    '${productModel.price!} MXN',
+                    style: const TextStyle(fontSize: 22),
                   ),
                 ),
                 const SizedBox(
@@ -110,9 +117,20 @@ class _ProductDetailsState extends State<DetailsProductoScreen> {
                       );
                     }).toList(),
                     onChanged: (String? newValue) {
-                      dropdownValue = newValue!;
+                      setState(() {
+                        int newIndex = list.indexOf(newValue!);
+                        talla = newIndex;
+                        dropdownValue = newValue;
+                      });
                       //widget.control = newValue;
                     },
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                    "Cantidad disponible ${productModel.sizes![talla]['quantity']}",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -182,12 +200,11 @@ class _ProductDetailsState extends State<DetailsProductoScreen> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
-                const Padding(
-                  padding:
-                      EdgeInsets.only(left: 20, right: 20, top: 5, bottom: 20),
-                  child: Text(
-                      "Con esté suéter de la marca Sonneti se volverá tu accesorio número uno para usar en el invierno.",
-                      style: TextStyle(fontSize: 12)),
+                Padding(
+                  padding: const EdgeInsets.only(
+                      left: 20, right: 20, top: 5, bottom: 20),
+                  child: Text(productModel.description!,
+                      style: const TextStyle(fontSize: 12)),
                 )
               ]),
         ),

@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -11,23 +10,21 @@ import 'package:kings_style_app/models/product_model.dart';
 import 'package:kings_style_app/models/user_model.dart';
 import 'package:kings_style_app/provider/theme_provider.dart';
 import 'package:kings_style_app/screens/details_product_screen.dart';
-import 'package:kings_style_app/screens/find_product.dart';
 import 'package:kings_style_app/screens/login_screen.dart';
-import 'package:kings_style_app/screens/product_by_category.dart';
 import 'package:kings_style_app/widgets/dialog_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class DashBoardScreen extends StatefulWidget {
-  const DashBoardScreen({super.key});
+class FindProduct extends StatefulWidget {
+  String category;
+  FindProduct({super.key, required this.category});
 
   @override
-  State<DashBoardScreen> createState() => _DashBoardScreenState();
+  State<FindProduct> createState() => _DashBoardScreenState();
 }
 
-class _DashBoardScreenState extends State<DashBoardScreen> {
-  TextEditingController _textFieldController = TextEditingController();
-
+class _DashBoardScreenState extends State<FindProduct> {
+  late String category;
   AuthenticationFireBase authenticationFireBase = AuthenticationFireBase();
   GoogleAuth googleAuth = GoogleAuth();
   GithubAuth githubAuth = GithubAuth();
@@ -43,6 +40,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
   Future<void> _initData() async {
     try {
+      category = widget.category;
       UserModel? user = await UserModel.fromSharedPreferences();
       setState(() {
         _user = user!;
@@ -140,17 +138,15 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(
                               vertical: 10, horizontal: 30),
-                          child: TextField(
-                            controller: _textFieldController,
-                            style: const TextStyle(color: Colors.black87),
-                            decoration: const InputDecoration(
+                          child: const TextField(
+                            style: TextStyle(color: Colors.black87),
+                            decoration: InputDecoration(
                               prefixIcon: Icon(Icons.search),
                               filled: true,
                               fillColor: Colors.white,
                               contentPadding: EdgeInsets.symmetric(
                                   vertical: 10, horizontal: 5),
                             ),
-                            onEditingComplete: () {},
                           ),
                         )
                       ],
@@ -160,8 +156,10 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
               ),
             ),
             body: StreamBuilder(
-              stream:
-                  FirebaseFirestore.instance.collection('products').snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('products')
+                  .where('name', isEqualTo: '%$category%')
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const CircularProgressIndicator();
@@ -176,29 +174,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   return ListView(
                     padding: const EdgeInsets.all(10),
                     children: [
-                      Container(
-                        height: 150,
-                        margin: const EdgeInsets.only(bottom: 10),
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
-                          children: [
-                            cardCategory(
-                                title: 'Trajes',
-                                img: 'assets/images/traje.png'),
-                            cardCategory(
-                                title: 'Camisas',
-                                img: 'assets/images/camisa.png'),
-                            cardCategory(
-                                title: 'Pantalones',
-                                img: 'assets/images/pantalon.png'),
-                            cardCategory(
-                                title: 'Sacos', img: 'assets/images/saco.png')
-                          ],
-                        ),
-                      ),
-                      const Text(
-                        "Popular",
-                        style: TextStyle(
+                      Text(
+                        category,
+                        style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(
@@ -237,7 +215,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                                         borderRadius: const BorderRadius.all(
                                             Radius.circular(15)),
                                         image: DecorationImage(
-                                            image: CachedNetworkImageProvider(
+                                            image: NetworkImage(
                                                 products[index].images![0]),
                                             fit: BoxFit.cover),
                                       ),
@@ -278,8 +256,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                       Text('${_user.firstName} ${_user.lastName ?? ''}'),
                   accountEmail: Text(_user.email ?? ''),
                   currentAccountPicture: CircleAvatar(
-                    backgroundImage: CachedNetworkImageProvider(_user
-                            .profilePicture ??
+                    backgroundImage: NetworkImage(_user.profilePicture ??
                         'https://www.shareicon.net/data/512x512/2016/05/24/770117_people_512x512.png'),
                   ),
                   decoration: BoxDecoration(
@@ -298,12 +275,11 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   onTap: () {
                     Navigator.pushNamed(context, '/add_product');
                   },
-                  leading: const Icon(Icons.add_box),
+                  leading: const Icon(Icons.account_circle),
                 ),
                 ListTile(
-                  title: const Text('change theme'),
-                  leading: const Icon(Icons.contrast),
-                  trailing: Switch.adaptive(
+                  title: const Text('Log out'),
+                  leading: Switch.adaptive(
                       value: themeProvider.isDarkMode,
                       onChanged: (bool value) async {
                         final SharedPreferences prefs =
@@ -327,36 +303,29 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   }
 
   Widget cardCategory({String? title, String? img}) {
-    return GestureDetector(
-      onTap: () {
-        Get.to(() => ProductByCategory(category: title),
-            transition: Transition.downToUp,
-            duration: const Duration(milliseconds: 500));
-      },
-      child: Container(
-        margin: const EdgeInsets.all(5),
-        height: 120,
-        decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.onErrorContainer,
-            borderRadius: const BorderRadius.all(Radius.circular(15))),
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                  height: 70,
-                  width: 70,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                        image: AssetImage(img!), fit: BoxFit.fill),
-                  ),
-                  margin: const EdgeInsets.all(10)),
-              Text(
-                title!,
-                style: const TextStyle(color: Colors.black),
-              )
-            ]),
-      ),
+    return Container(
+      margin: const EdgeInsets.all(5),
+      height: 120,
+      decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.onErrorContainer,
+          borderRadius: const BorderRadius.all(Radius.circular(15))),
+      child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+                height: 70,
+                width: 70,
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                      image: AssetImage(img!), fit: BoxFit.fill),
+                ),
+                margin: const EdgeInsets.all(10)),
+            Text(
+              title!,
+              style: const TextStyle(color: Colors.black),
+            )
+          ]),
     );
   }
 }

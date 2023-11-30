@@ -1,7 +1,11 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:kings_style_app/firebase/authentication_firebase.dart';
+import 'package:kings_style_app/firebase/git_hub_auth.dart';
+import 'package:kings_style_app/firebase/google_auth.dart';
 import 'package:kings_style_app/responsive.dart';
+import 'package:kings_style_app/widgets/dialog_widget.dart';
 import 'package:kings_style_app/widgets/email_field_widget.dart';
 import 'package:kings_style_app/widgets/pass_field_widget.dart';
 import 'package:social_login_buttons/social_login_buttons.dart';
@@ -19,53 +23,107 @@ class _LoginScreenState extends State<LoginScreen> {
   //emailFormField email =
   //emailFormField("Email", "Ingresa tu email", "Llene este campo");
   //textFieldPass pass = textFieldPass();
+  GoogleAuth googleAuth = GoogleAuth();
+  final GithubAuth _githubAuth = GithubAuth();
+  AuthenticationFireBase authenticationFireBase = AuthenticationFireBase();
+  DialogWidget dialogWidget = DialogWidget();
+  bool loginFailed = false;
+
   PassFieldWidget pass = PassFieldWidget(
       label: 'Password',
       hint: 'Enter your password',
-      msgError: 'This field is required');
+      msgError: 'Email or password wrong');
   EmailFieldWidget email = EmailFieldWidget(
       label: 'Email',
       hint: 'Enter your email',
-      msgError: 'This field is required');
+      msgError: 'Email or password wrong');
 
-  final btnGitHub = SocialLoginButton(
-    buttonType: SocialLoginButtonType.github,
-    onPressed: () {},
-    mode: SocialLoginButtonMode.single,
-    borderRadius: 15,
-    text: "",
-  );
+  Future<void> signInWithGoogle() async {
+    try {
+      await googleAuth.signInWithGoogle();
+      // ignore: use_build_context_synchronously
+      Navigator.pushNamed(context, '/dash_board');
+    } catch (e) {
+      dialogWidget.showMessage(message: e.toString(), title: "Error");
+    }
+  }
 
-  final btnForgotPass = TextButton(
-      onPressed: () {},
-      child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          child: const Text(
-            "Forgot your password?",
-            style: TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.right,
-          )));
+  bool validateForm() {
+    if (loginFailed) {
+      if (email.msgError == "Email or password wrong" &&
+          !email.formkey.currentState!.validate()) {
+        return true;
+      } else if (pass.msgError == "Email or password wrong" &&
+          !pass.formkey.currentState!.validate()) {
+        return true;
+      }
+    }
+    if (email.formkey.currentState!.validate()) {
+      if (pass.formkey.currentState!.validate()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final btnGoogle = SocialLoginButton(
       buttonType: SocialLoginButtonType.google,
-      onPressed: () {},
+      onPressed: signInWithGoogle,
       mode: SocialLoginButtonMode.single,
       borderRadius: 15,
       text: "",
     );
 
-    final btnSend = SocialLoginButton(
-      buttonType: SocialLoginButtonType.generalLogin,
+    final btnGitHub = SocialLoginButton(
+      buttonType: SocialLoginButtonType.github,
       onPressed: () {
-        Navigator.pushNamed(context, '/dashBoard');
+        _githubAuth.signInWithGitHub(context).then((value) {
+          dialogWidget.showProgress();
+          if (value == 'logged-succesful' || value == 'logged-without-info') {
+            dialogWidget.closeProgress();
+            Navigator.pushNamed(context, '/dash_board');
+          } else if (value == 'account-exists-with-different-credential') {
+            dialogWidget.closeProgress();
+            dialogWidget.showMessage(
+                message: 'Account exists with different credential',
+                title: "Error");
+          } else {
+            dialogWidget.closeProgress();
+            dialogWidget.showMessage(message: 'Error', title: "Error");
+          }
+        });
       },
       mode: SocialLoginButtonMode.single,
       borderRadius: 15,
-      backgroundColor: Theme.of(context).primaryColor,
+      text: "",
     );
+
+    final btnResend = TextButton(
+        onPressed: () {
+          authenticationFireBase
+              .resendVerification(
+                  email: email.controlador, password: pass.controlador)
+              .then((value) {
+            if (value == 'email-resent') {
+              Navigator.pop(context);
+              dialogWidget.showMessage(
+                  message: 'Email verefication resend', title: "Info");
+            } else {
+              dialogWidget.showMessage(message: 'Error', title: "Error");
+            }
+          });
+        },
+        child: const Text('Reenviar verificación'));
+
+    final btnOk = TextButton(
+        onPressed: () {
+          Navigator.pop(context);
+        },
+        child: const Text('Ok'));
+
+    List<Widget> optionsResend = [btnResend, btnOk];
 
     final rowBtnSocial = SizedBox(
       width: 250,
@@ -74,11 +132,65 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [btnGoogle, btnGitHub]),
     );
 
+    Future<void> signIn() async {
+      if (validateForm()) {
+        dialogWidget.showProgress();
+        String result = await authenticationFireBase.signInWithEmailAndPass(
+            email: email.controlador, password: pass.controlador);
+        if (result == 'logged-in-successfully') {
+          // ignore: use_build_context_synchronously
+          dialogWidget.closeProgress();
+          Navigator.pushNamed(context, '/dash_board');
+        } else {
+          if (result == 'email-not-verified') {
+            dialogWidget.closeProgress();
+            dialogWidget.showMessageWithActions(
+                title: "Error",
+                message: "Email not verified",
+                actions: optionsResend);
+          } else {
+            dialogWidget.closeProgress();
+            if (result == 'invalid-credential') {
+              loginFailed = true;
+              email.error = true;
+              email.formkey.currentState!.validate();
+              pass.error = true;
+              pass.formkey.currentState!.validate();
+            }
+            //credenciales incorrectas
+          }
+        }
+
+        print("result: $result");
+      }
+    }
+
+    final btnSend = SocialLoginButton(
+      buttonType: SocialLoginButtonType.generalLogin,
+      onPressed: signIn,
+      mode: SocialLoginButtonMode.single,
+      borderRadius: 15,
+      backgroundColor: Theme.of(context).primaryColor,
+    );
+
+    final btnForgotPass = TextButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/forgot_password');
+        },
+        child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.zero,
+            child: const Text(
+              "Forgot your password?",
+              style: TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.right,
+            )));
+
     final rowRegister = Row(children: [
       const Text("Do you have an acount?"),
       Expanded(
           child: TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pushNamed(context, '/register');
               },
               child: const Text(
@@ -91,22 +203,27 @@ class _LoginScreenState extends State<LoginScreen> {
       //appBar: AppBar(title: Text("Login")),
       body: Responsive(
         mobile: MobileLoginScreen(
-          dataLogin:
-              dataLogin(context, btnSend, rowBtnSocial, rowRegister, false),
+          dataLogin: dataLogin(context, btnSend, rowBtnSocial, rowRegister,
+              btnForgotPass, false),
         ),
         tablet: TabletLoginScreen(
-            dataLogin:
-                dataLogin(context, btnSend, rowBtnSocial, rowRegister, true)),
+            dataLogin: dataLogin(context, btnSend, rowBtnSocial, rowRegister,
+                btnForgotPass, true)),
         desktop: DesktopLoginScreen(
-          dataLogin:
-              dataLogin(context, btnSend, rowBtnSocial, rowRegister, false),
+          dataLogin: dataLogin(context, btnSend, rowBtnSocial, rowRegister,
+              btnForgotPass, false),
         ),
       ),
     );
   }
 
-  Widget dataLogin(BuildContext context, SocialLoginButton btnSend,
-      SizedBox rowBtnSocial, Row rowRegister, bool isTablet) {
+  Widget dataLogin(
+      BuildContext context,
+      SocialLoginButton btnSend,
+      SizedBox rowBtnSocial,
+      Row rowRegister,
+      Widget btnForgotPass,
+      bool isTablet) {
     // ignore: unused_local_variable
     double screenWidth = MediaQuery.of(context).size.width;
     return Column(
@@ -167,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                     color: Theme.of(context)
                         .scaffoldBackgroundColor
-                        .withOpacity(0.4),
+                        .withOpacity(0.8),
                     borderRadius: BorderRadius.circular(30)),
                 child: Column(children: [
                   const Text(

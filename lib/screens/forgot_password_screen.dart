@@ -1,145 +1,60 @@
 import 'dart:ui';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:kings_style_app/firebase/authentication_firebase.dart';
-import 'package:kings_style_app/models/user_model.dart';
 import 'package:kings_style_app/responsive.dart';
 import 'package:kings_style_app/widgets/dialog_widget.dart';
 import 'package:kings_style_app/widgets/email_field_widget.dart';
-import 'package:kings_style_app/widgets/pass_field_widget.dart';
-import 'package:kings_style_app/widgets/text_field_widget.dart';
 import 'package:social_login_buttons/social_login_buttons.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _LoginScreenState();
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
 }
 
-class _LoginScreenState extends State<RegisterScreen> {
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   AuthenticationFireBase authenticationFireBase = AuthenticationFireBase();
   DialogWidget dialogWidget = DialogWidget();
 
-  TextFieldWidget firstName = TextFieldWidget(
-    label: 'First name',
-    hint: "Enter your first name",
-    msgError: 'This field is required',
-    icono: Icons.verified_user,
-    inputType: 1,
-  );
-  TextFieldWidget lastName = TextFieldWidget(
-    label: 'Last name',
-    hint: "Enter your last name",
-    msgError: 'This field is required',
-    icono: Icons.verified_user,
-    inputType: 1,
-  );
-  PassFieldWidget pass = PassFieldWidget(
-      label: 'Password',
-      hint: 'Enter your password',
-      msgError: 'This field is required');
   EmailFieldWidget email = EmailFieldWidget(
       label: 'Email',
       hint: 'Enter your email',
       msgError: 'This field is required');
 
-  final btnGitHub = SocialLoginButton(
-    buttonType: SocialLoginButtonType.github,
-    onPressed: () {},
-    mode: SocialLoginButtonMode.single,
-    borderRadius: 15,
-    text: "",
-  );
-
-  final btnForgotPass = TextButton(
-      onPressed: () {},
-      child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.zero,
-          child: const Text(
-            "Forgot your password?",
-            style: TextStyle(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.right,
-          )));
-
-  Future<void> _registerUser() async {
-    if (validateForm()) {
-      try {
-        dialogWidget.showProgress();
-        UserModel userModel = UserModel(
-            firstName: firstName.controlador,
-            lastName: lastName.controlador,
-            email: email.controlador,
-            pass: pass.controlador);
-        await authenticationFireBase.createUser(userModel: userModel);
-        dialogWidget.closeProgress();
-        // ignore: use_build_context_synchronously
-        await dialogWidget
-            .showMessage(message: "User registered", title: "Succesful")
-            .then((value) => {Navigator.pushNamed(context, '/login')});
-      } catch (e) {
-        dialogWidget.closeProgress();
-        dialogWidget.showMessage(message: e.toString(), title: "Error");
-      }
-    }
-  }
-
   bool validateForm() {
-    return (firstName.formkey.currentState!.validate() &&
-        lastName.formkey.currentState!.validate() &&
-        email.formkey.currentState!.validate() &&
-        pass.formkey.currentState!.validate());
+    return (email.formkey.currentState!.validate());
   }
 
   @override
   Widget build(BuildContext context) {
-    final btnGoogle = SocialLoginButton(
-      buttonType: SocialLoginButtonType.google,
-      onPressed: () {},
-      mode: SocialLoginButtonMode.single,
-      borderRadius: 15,
-      text: "",
-    );
-
-    /* 
-    final btnFacebook = SocialLoginButton(
-      buttonType: SocialLoginButtonType.facebook,
-      onPressed: () async {},
-      mode: SocialLoginButtonMode.single,
-      borderRadius: 15,
-      width: 77,
-      text: "",
-    );
-    */
+    final btnOk = TextButton(
+        onPressed: () {
+          Navigator.pop(context);
+          Navigator.pop(context);
+        },
+        child: const Text('Ok'));
 
     final btnSend = SocialLoginButton(
       buttonType: SocialLoginButtonType.generalLogin,
-      onPressed: _registerUser,
+      onPressed: () async {
+        dialogWidget.showProgress();
+        if (email.formkey.currentState!.validate()) {
+          await FirebaseAuth.instance
+              .sendPasswordResetEmail(email: email.controlador!);
+          dialogWidget.closeProgress();
+          dialogWidget.showMessageWithActions(
+              title: "Succesful",
+              message: "We've sent an email to reset your password",
+              actions: [btnOk]);
+        }
+      },
       mode: SocialLoginButtonMode.single,
       borderRadius: 15,
       backgroundColor: Theme.of(context).primaryColor,
     );
-
-    final rowBtnSocial = SizedBox(
-      width: 250,
-      child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [btnGoogle, btnGitHub]),
-    );
-
-    final rowRegister = Row(children: [
-      const Text("Do you have an acount?"),
-      Expanded(
-          child: TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/register');
-              },
-              child: const Text(
-                "Create your acount",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              )))
-    ]);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -169,22 +84,18 @@ class _LoginScreenState extends State<RegisterScreen> {
       ),
       body: Responsive(
         mobile: MobileLoginScreen(
-          dataLogin:
-              dataLogin(context, btnSend, rowBtnSocial, rowRegister, false),
+          dataLogin: dataLogin(context, btnSend, false),
         ),
-        tablet: TabletLoginScreen(
-            dataLogin:
-                dataLogin(context, btnSend, rowBtnSocial, rowRegister, true)),
+        tablet: TabletLoginScreen(dataLogin: dataLogin(context, btnSend, true)),
         desktop: DesktopLoginScreen(
-          dataLogin:
-              dataLogin(context, btnSend, rowBtnSocial, rowRegister, false),
+          dataLogin: dataLogin(context, btnSend, false),
         ),
       ),
     );
   }
 
-  Widget dataLogin(BuildContext context, SocialLoginButton btnSend,
-      SizedBox rowBtnSocial, Row rowRegister, bool isTablet) {
+  Widget dataLogin(
+      BuildContext context, SocialLoginButton btnSend, bool isTablet) {
     // ignore: unused_local_variable
     double screenWidth = MediaQuery.of(context).size.width;
     return Column(
@@ -237,7 +148,7 @@ class _LoginScreenState extends State<RegisterScreen> {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
               child: Container(
-                padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
+                padding: const EdgeInsets.fromLTRB(10, 20, 10, 10),
                 margin: isTablet
                     ? EdgeInsets.only(
                         left: screenWidth * 0.15, right: screenWidth * 0.15)
@@ -245,26 +156,23 @@ class _LoginScreenState extends State<RegisterScreen> {
                 decoration: BoxDecoration(
                     color: Theme.of(context)
                         .scaffoldBackgroundColor
-                        .withOpacity(0.4),
+                        .withOpacity(0.8),
                     borderRadius: BorderRadius.circular(30)),
                 child: Column(children: [
                   const Text(
-                    "Create Your Profile",
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    "You forgot your password?",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Text(
-                      "Make it personal! Create your profile to access exclusive features",
+                      "We'll help you",
                       style:
                           TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  firstName,
-                  lastName,
                   email,
-                  pass,
                   btnSend,
                 ]),
               ),

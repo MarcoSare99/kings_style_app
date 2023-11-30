@@ -1,5 +1,6 @@
 import 'package:animate_do/animate_do.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class OnBoardingScreen extends StatefulWidget {
   const OnBoardingScreen({super.key});
@@ -45,47 +46,45 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
             ),
           ],
         ),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                  height: 50,
-                  width: 50,
-                  decoration: const BoxDecoration(
-                    image: DecorationImage(
-                        image: AssetImage(
-                            "assets/images/logo_head.png"), //fixe resolutions
-                        fit: BoxFit.fill),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+                height: 50,
+                width: 50,
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
+                      image: AssetImage(
+                          "assets/images/logo_head.png"), //fixe resolutions
+                      fit: BoxFit.fill),
+                ),
+                margin: const EdgeInsets.only(top: 30, bottom: 10)),
+            Stack(
+              children: [
+                const Text(
+                  "King's style",
+                  style: TextStyle(
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white, // Color del fondo
                   ),
-                  margin: const EdgeInsets.only(top: 30, bottom: 10)),
-              Stack(
-                children: [
-                  const Text(
-                    "King's style",
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white, // Color del fondo
-                    ),
+                ),
+                // Texto sin contorno (texto principal)
+                Text(
+                  "King's style",
+                  style: TextStyle(
+                    fontSize: 24.0,
+                    fontWeight: FontWeight.bold,
+                    foreground: Paint()
+                      ..style = PaintingStyle.stroke
+                      ..strokeWidth = 2.0
+                      ..color = Colors.black, // Color del contorno
                   ),
-                  // Texto sin contorno (texto principal)
-                  Text(
-                    "King's style",
-                    style: TextStyle(
-                      fontSize: 24.0,
-                      fontWeight: FontWeight.bold,
-                      foreground: Paint()
-                        ..style = PaintingStyle.stroke
-                        ..strokeWidth = 2.0
-                        ..color = Colors.black, // Color del contorno
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                ),
+              ],
+            ),
+          ],
         ),
         Positioned(
             bottom: 0,
@@ -99,12 +98,14 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     ElevatedButton(
                         style: ButtonStyle(
                             backgroundColor: MaterialStateProperty.all<Color>(
-                                Theme.of(context).colorScheme.onPrimary)),
-                        onPressed: () {
+                                Color.fromARGB(255, 249, 67, 118))),
+                        onPressed: () async {
                           _pageController.nextPage(
                               duration: const Duration(seconds: 1),
                               curve: Curves.decelerate);
                           if (_pageIndex == 2) {
+                            final prefs = await SharedPreferences.getInstance();
+                            prefs.setBool('is_onBoarding', true);
                             Navigator.pushNamed(context, '/login');
                           }
                         },
@@ -177,9 +178,9 @@ class OnboardContent extends StatelessWidget {
                   title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: isTablet ? 38 : 22,
-                    fontWeight: FontWeight.w800,
-                  ),
+                      fontSize: isTablet ? 38 : 22,
+                      fontWeight: FontWeight.w800,
+                      color: Color.fromARGB(255, 249, 67, 118)),
                 ),
               ),
               const SizedBox(
@@ -190,7 +191,8 @@ class OnboardContent extends StatelessWidget {
                 child: Text(
                   descripcion,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: isTablet ? 24 : 14),
+                  style: TextStyle(
+                      fontSize: isTablet ? 24 : 14, color: Colors.white),
                 ),
               ),
             ],
@@ -213,7 +215,7 @@ class DotIndicator extends StatelessWidget {
       decoration: BoxDecoration(
           color: isActivate
               ? Theme.of(context).colorScheme.onPrimary
-              : Theme.of(context).colorScheme.onPrimary.withOpacity(0.4),
+              : Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
           shape: BoxShape.circle),
     );
   }
